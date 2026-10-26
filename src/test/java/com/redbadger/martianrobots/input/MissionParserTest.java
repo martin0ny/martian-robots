@@ -160,4 +160,35 @@ class MissionParserTest {
                     () -> "Expected message to contain \"" + expectedReason + "\" but was: " + error.getMessage());
         }
     }
+
+    @Nested
+    class SingleLines {
+
+        @Test
+        void parsesEachKindOfLineOnItsOwn() {
+            Grid grid = parser.parseGrid(" 5 3 ", 1);
+
+            assertEquals(new Grid(5, 3), grid);
+            assertEquals(new Position(new Coordinate(1, 1), Orientation.EAST),
+                    parser.parseStartPosition("1 1 E", grid, 2));
+            assertEquals(4, parser.parseInstructions("RFRF", 3).size());
+        }
+
+        @Test
+        void rejectsBlankInstructions() {
+            InvalidInputException error = assertThrows(InvalidInputException.class,
+                    () -> parser.parseInstructions("   ", 3));
+
+            assertEquals("instructions are missing", error.reason());
+        }
+
+        @Test
+        void reasonOmitsTheLineNumber() {
+            InvalidInputException error = assertThrows(InvalidInputException.class,
+                    () -> parser.parseGrid("60 3", 1));
+
+            assertEquals("coordinate 60 must be between 0 and 50", error.reason());
+            assertEquals("Line 1: coordinate 60 must be between 0 and 50", error.getMessage());
+        }
+    }
 }
