@@ -20,19 +20,51 @@ Build the jar (this also runs the tests):
 ./mvnw package
 ```
 
-Then pass an input file:
+There are three ways to run it.
+
+**Interactive.** Start it with no arguments and it asks how you want to provide the mission:
+either the path to an input file, or step by step, where it prompts for the grid and then each
+robot's position and instructions. Each answer is checked as you enter it, so a typo can be
+fixed straight away instead of failing the whole run.
+
+```bash
+java -jar target/martian-robots.jar
+```
+
+```
+Martian Robots
+
+How would you like to provide the mission?
+  1) Load it from a file
+  2) Enter it step by step
+Choose 1 or 2: 2
+
+Enter the mission one line at a time.
+Orientations are N, E, S or W. Instructions are L (turn left), R (turn right) and F (forward).
+
+Grid size, as the upper-right corner (e.g. 5 3): 5 3
+Robot 1 start position (e.g. 1 1 E), or press Enter to finish: 1 1 E
+Robot 1 instructions (e.g. RFRFRFRF): RFRFRFRF
+Robot 2 start position (e.g. 1 1 E), or press Enter to finish:
+
+Final positions:
+1 1 E
+```
+
+**From a file.** Pass the path as the only argument:
 
 ```bash
 java -jar target/martian-robots.jar samples/sample-input.txt
 ```
 
-or pipe the input through standard input:
+**From standard input.** Pass `-` and pipe the input in:
 
 ```bash
-java -jar target/martian-robots.jar < samples/sample-input.txt
+java -jar target/martian-robots.jar - < samples/sample-input.txt
 ```
 
-With the sample input from the brief this prints:
+The file and standard input modes print the results and nothing else, so they are easy to use
+from scripts. With the sample input from the brief they print:
 
 ```
 1 1 E
@@ -42,8 +74,8 @@ With the sample input from the brief this prints:
 
 On Windows use `mvnw.cmd` in place of `./mvnw`.
 
-If the input is invalid nothing is simulated. The program prints the line number and the reason
-to standard error and exits with status `1`:
+If a file or piped input is invalid nothing is simulated. The program prints the line number
+and the reason to standard error and exits with status `1`:
 
 ```
 Invalid input. Line 3: unknown instruction 'Z' at column 3
@@ -56,7 +88,8 @@ Invalid input. Line 3: unknown instruction 'Z' at column 3
 ```
 
 The tests are plain JUnit 5. `MartianRobotsAppTest` is the end-to-end suite and includes the
-sample from the brief; the other test classes cover each component on its own.
+sample from the brief. `InteractiveSessionTest` drives the interactive mode with scripted
+answers. The other test classes cover each component on its own.
 
 ## How it works
 
@@ -69,7 +102,9 @@ The code is split into four small packages, each with one job:
 | `mission` | `MissionControl`, which runs each robot in turn against a shared `Mars`              |
 | `input`   | `MissionParser`, which validates the text input and turns it into a `Mission`        |
 
-`MartianRobotsApp` wires these together and handles the command line.
+`MartianRobotsApp` wires these together and handles the command line. `InteractiveSession`
+runs the prompts for interactive mode. It validates each answer with the same `MissionParser`
+methods used for files, so the rules live in one place.
 
 The flow for a single run is:
 
@@ -94,6 +129,10 @@ A few decisions worth calling out:
 - **Fail fast on bad input.** All validation lives in the parser and reports the original line
   number (blank lines are skipped but still counted), so a typo in robot 40 is not discovered
   after robots 1 to 39 have already moved.
+- **Interactive and scripted modes.** Running with no arguments starts the interactive mode,
+  which is friendlier for someone trying it out. Reading piped input therefore needs `-`
+  (a common command-line convention), because otherwise there is no reliable way to tell
+  whether a person is typing or input is being piped in.
 
 ## Assumptions
 

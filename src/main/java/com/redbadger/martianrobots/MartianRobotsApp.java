@@ -17,11 +17,14 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Command-line entry point. Reads a mission from the file given as the only argument, or from
- * standard input when no argument is given, and prints one line per robot.
+ * Command-line entry point. With no arguments it starts an {@link InteractiveSession}; with a
+ * file path it reads the mission from that file; with {@code -} it reads the mission from
+ * standard input so it can be piped in. The file and standard input modes print one line per
+ * robot and nothing else, which keeps them script-friendly.
  */
 public final class MartianRobotsApp {
 
+    private static final String STDIN_ARGUMENT = "-";
     private static final int EXIT_INVALID_INPUT = 1;
     private static final int EXIT_USAGE = 2;
 
@@ -44,16 +47,21 @@ public final class MartianRobotsApp {
 
     public static void main(String[] args) {
         if (args.length > 1) {
-            System.err.println("Usage: java -jar martian-robots.jar [input-file]");
+            System.err.println("Usage: java -jar martian-robots.jar [input-file | -]");
             System.exit(EXIT_USAGE);
         }
 
-        MartianRobotsApp app = new MartianRobotsApp(
-                new MissionParser(CommandRegistry.standard()),
-                new MissionControl());
+        MissionParser parser = new MissionParser(CommandRegistry.standard());
+        MissionControl missionControl = new MissionControl();
 
+        if (args.length == 0) {
+            new InteractiveSession(parser, missionControl, standardInput(), System.out).run();
+            return;
+        }
+
+        MartianRobotsApp app = new MartianRobotsApp(parser, missionControl);
         try {
-            app.run(readInput(args)).forEach(System.out::println);
+            app.run(readInput(args[0])).forEach(System.out::println);
         } catch (InvalidInputException e) {
             System.err.println("Invalid input. " + e.getMessage());
             System.exit(EXIT_INVALID_INPUT);
@@ -66,12 +74,16 @@ public final class MartianRobotsApp {
         }
     }
 
-    private static List<String> readInput(String[] args) throws IOException {
-        if (args.length == 1) {
-            return Files.readAllLines(Path.of(args[0]), StandardCharsets.UTF_8);
+    private static List<String> readInput(String source) throws IOException {
+        if (STDIN_ARGUMENT.equals(source)) {
+            try (BufferedReader reader = standardInput()) {
+                return reader.lines().toList();
+            }
         }
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
-            return reader.lines().toList();
-        }
+        return Files.readAllLines(Path.of(source), StandardCharsets.UTF_8);
+    }
+
+    private static BufferedReader standardInput() {
+        return new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
     }
 }
