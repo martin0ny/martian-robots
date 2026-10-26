@@ -20,6 +20,8 @@ Build the jar (this also runs the tests):
 ./mvnw package
 ```
 
+On Windows use `mvnw.cmd` in place of `./mvnw`.
+
 There are three ways to run it.
 
 **Interactive.** Start it with no arguments and it asks how you want to provide the mission:
@@ -51,6 +53,14 @@ Final positions:
 1 1 E
 ```
 
+A few things that help in interactive mode:
+
+- If an answer is wrong, the reason is shown and the same question is asked again. Nothing
+  entered before that point is lost.
+- File paths can start with `~` and can be wrapped in quotes, so a path pasted from Finder or
+  Explorer works as it is.
+- Press `Ctrl+D` (`Ctrl+Z` then `Enter` on Windows) to quit at any prompt.
+
 **From a file.** Pass the path as the only argument:
 
 ```bash
@@ -72,14 +82,21 @@ from scripts. With the sample input from the brief they print:
 2 3 S
 ```
 
-On Windows use `mvnw.cmd` in place of `./mvnw`.
-
 If a file or piped input is invalid nothing is simulated. The program prints the line number
 and the reason to standard error and exits with status `1`:
 
 ```
 Invalid input. Line 3: unknown instruction 'Z' at column 3
 ```
+
+### From an IDE
+
+Open the project folder in IntelliJ IDEA (or any IDE with Maven support) and it will be
+imported from `pom.xml`. Run `MartianRobotsApp`:
+
+- with no program arguments for the interactive mode, answering the prompts in the Run console;
+- or with `samples/sample-input.txt` as the program argument to run the sample file. Make sure
+  the working directory is the project root so the relative path resolves.
 
 ## Running the tests
 
@@ -105,6 +122,18 @@ The code is split into four small packages, each with one job:
 `MartianRobotsApp` wires these together and handles the command line. `InteractiveSession`
 runs the prompts for interactive mode. It validates each answer with the same `MissionParser`
 methods used for files, so the rules live in one place.
+
+```
+src/main/java/com/redbadger/martianrobots
+├── MartianRobotsApp.java        command-line entry point
+├── InteractiveSession.java      menu and step-by-step prompts
+├── command/                     Command, CommandRegistry, TurnLeft, TurnRight, MoveForward
+├── input/                       MissionParser, InvalidInputException
+├── mission/                     Mission, RobotProgram, MissionControl
+└── model/                       Orientation, Coordinate, Position, Grid, Robot, Mars
+```
+
+The tests in `src/test/java` follow the same layout.
 
 The flow for a single run is:
 
@@ -158,6 +187,9 @@ The brief leaves a few things open. These are the interpretations I went with:
   path would make it easy to add a verbose mode, or to render the grid for debugging.
 - **Collisions.** Robots run one at a time and never meet. If they ever ran concurrently, or
   stayed on the grid after finishing, `Mars` would need to track occupied points too.
+- **More from the interactive mode.** It runs one mission and exits. Natural next steps would
+  be offering to run another mission (optionally keeping the scents), letting the user remove
+  the last robot they entered, and drawing the grid with each robot's final position.
 - **Streaming input.** The whole input is read into memory before parsing. That's fine for the
   sizes in the brief, but a very large transmission could be parsed and run robot by robot.
 - **Static analysis and CI.** I would add Checkstyle or Spotless for formatting, plus a GitHub
